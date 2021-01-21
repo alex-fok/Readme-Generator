@@ -2,29 +2,46 @@ const fs = require('fs');
 const inquirer = require('inquirer');
 const {directory} = require('./config');
 const {errorAndReturn} = require('./errorHandler');
-let current = "";
+let currentFile = "";
 
 const createRM = () => {
-    inquirer.prompt([{
+    console.log("\nCreate new README");
+    inquirer.prompt([
+    {
         type: "input",
         message: "Type in file name for new README:",
         name: "fileName"
+    },
+    {
+        type: "input",
+        message: "Title:",
+        name: "title"
     }])
     .then(answer => {
-        current = answer.fileName;
+        currentFile = answer.fileName;
+        fs.writeFile(`${directory}/${currentFile}.md`,`## ${answer.title}\n* [Installation](#installation)\n* [Usage](#usage)\n* [Credits](#credits)\n* [License](#license)`, 'utf8', () => {
+            console.log(`File ${answer.currentFile}.md created`)
+            fileEdit();
+        })      
     })
+}
+const fileEdit = () => {
+    console.log()
 }
 
 const openExisting = () => {
     const files = fs.readdirSync(directory);
     files.length > 0
-    ? inquirer.prompt([{
+    ? inquirer
+    .prompt([{
         type: "list",
         message: "Choose from the following:",
         choices: files,
         name: "fileName"
-    }]).then(answer => {
-        current = answer.fileName;
+    }])
+    .then(answer => {
+        currentFile = answer.fileName;
+        fileEdit();
     })
     : errorAndReturn("No files found in directory", mainMenu);
 }
