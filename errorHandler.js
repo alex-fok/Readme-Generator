@@ -1,6 +1,6 @@
-const errorAndReturn = (message, callback) => {
+const errorAndGoTo = (message, callback) => {
     console.log(`Error: ${message}`);
     callback();
 }
 
-exports.errorAndReturn = errorAndReturn;
+exports.errorAndGoTo = errorAndGoTo;
