@@ -6,6 +6,11 @@ README Generator is a command-line application which generates READEME file base
 npm install
 ```
 
+## Run
+```bash
+node index.js
+```
+
 ## Screenshot
 ![menu](./screenshot/menu.png)
 
