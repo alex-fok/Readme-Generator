@@ -2,7 +2,7 @@
 README Generator is a command-line application which generates READEME file based on user input.
 
 ## Screenshot
-![menu](./screenshots/menu.png)
+![menu](./screenshot/menu.png)
 
 ## Sample
 [README (Sample)](./generate/test/README.md)
