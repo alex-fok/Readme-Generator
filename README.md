@@ -1,6 +1,11 @@
 # README Generator
 README Generator is a command-line application which generates READEME file based on user input.
 
+## Installation
+```bash
+npm install
+```
+
 ## Screenshot
 ![menu](./screenshot/menu.png)
 
