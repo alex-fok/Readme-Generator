@@ -1,5 +1,6 @@
 const fs = require('fs');
 const inquirer = require('inquirer');
+const license = require('./licenseTemplate');
 const {directory, initStr} = require('./config');
 const {errorAndGoTo} = require('./errorHandler');
 let currentFolder = "";
@@ -61,7 +62,7 @@ const createRM = () => {
 const editFile = () => {
     console.log("======== EDITING ========");
 
-    const editREADME = (file, data, start, end, content, section, goTo = editFile) => {
+    const editRM = (file, data, start, end, content, section, goTo = selectSection) => {
         const result = data.substring(0,start).concat("\n", content, "\n", data.substring(end));
         fs.writeFile(file, result, (err)=> {
             if (err) throw err;
@@ -94,7 +95,7 @@ const editFile = () => {
             const file = `${directory}/${currentFolder}/README.md`;
 
             const addContributor = () => {
-                const location = `./${directory}/contributors.json`;
+                const location = `./${directory}/${currentFolder}/contributors.json`;
                 let contributors = {};
 
                 const add = () => {
@@ -137,17 +138,18 @@ const editFile = () => {
                     }
                 }
 
-                const save = () => {
+                const save = (goBack = false) => {
                     fs.writeFile(location, JSON.stringify(contributors), "utf8", (err) => {
                         if (err) throw err;
                         fs.readFile(file, 'utf8', (err, data) => {
                             if (err) throw err;
                             const keys = Object.keys(contributors);
                             const str = keys.map((name) => {
-                                `[${name}](${contributors[name]})\n`
-                            });
+                                return `[${name}](${contributors[name]})`
+                            }).join("\n");
                             const targetText = "## Credits";
-                            editREADME(file, data, ...getSectSpan(data, targetText), str, "Credits", actions);
+                            const next = goBack ? selectSection : actions;
+                            editRM(file, data, ...getSectSpan(data, targetText), str, "Credits", next);
                         })
                     })
                     
@@ -159,24 +161,63 @@ const editFile = () => {
                         name: "actions",
                         type: "list",
                         message: "Choose Operation",
-                        choices: ["Add", "Remove", "Save", new inquirer.Separator(), "Go Back", "Quit"]
+                        choices: ["Add", "Remove", "Save", new inquirer.Separator(), "Save And Go Back", "Quit"]
                     }])
                     .then(answer => {
                         switch(answer.actions) {
-                            case "Add": add(); break;
-                            case "Remove": remove(); break;
-                            case "Save": save(); break;
-                            case "Go Back": selectSection(); break;
-                            default: quit(); break;
+                            case "Add":
+                                add(); break;
+                            case "Remove":
+                                remove(); break;
+                            case "Save":
+                                save(); break;
+                            case "Save And Go Back":
+                                save(true); break;
+                            default:
+                                quit(); break;
                         }
                     })
                 }
-
                 contributors = fs.existsSync(location) ? JSON.parse(fs.readFileSync(location, 'utf8')) : {};
-                actions();
-                
+                actions();  
             }
-
+            const addLicense = () => {
+                inquirer
+                .prompt([
+                    {
+                        name: "license",
+                        type: "list",
+                        message: "Choose license",
+                        choices: ["MIT", "ISC"]
+                    },
+                    {
+                        name: "year",
+                        type: "input",
+                        message: "Year: "
+                    },
+                    {
+                        name: "name",
+                        type: "input",
+                        message: "Your fullname:"
+                    }
+                ])
+                .then(answer => {
+                    fs.readFile(file, 'utf8', (err, data) => {
+                        if (err) throw err;
+                        const targetText = `## License`;
+                        const indexAt = data.indexOf(targetText);
+                        if (indexAt < 0) {
+                            console.log(`Section not found. Please make sure '${targetText}' is included in README`);
+                            selectSection();
+                        }
+                        else {
+                            const li = answer.license === "MIT" ? license.MIT : license.ISC;
+                            const renewed = li.replace("[year]", answer.year).replace("[fullname]", answer.name)
+                            editRM(file, data, ...getSectSpan(data, targetText), renewed)
+                        }
+                    });
+                })
+            }
             const addText = () => {
                 fs.readFile(file, 'utf8', (err, data) => {
                     if (err) throw err;
@@ -194,7 +235,7 @@ const editFile = () => {
                             message: "Insert content:"
                         }])
                         .then(input => {
-                            editREADME(file, data, ...getSectSpan(data, targetText), input.content, answer.section);
+                            editRM(file, data, ...getSectSpan(data, targetText), input.content, answer.section);
                         })
                     }
                 })
@@ -208,13 +249,6 @@ const editFile = () => {
                 case "Go Back": mainMenu(); break;
                 default: quit(); break;
             }
-            
-            
-            const addLicense = () => {
-                
-            }
-
-         
         })
     }
     selectSection();
