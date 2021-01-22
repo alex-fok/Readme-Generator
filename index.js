@@ -83,7 +83,7 @@ const editFile = () => {
             name: "section",
             type: "list",
             message: "Select section to edit:",
-            choices: ["Description","Installation", "Usage", "License", "Contribution", "Tests", "Credits", "Questions", new inquirer.Separator(),"Go Back", "Quit", new inquirer.Separator()]
+            choices: ["Description","Installation", "Usage", "License", "Contributing", "Tests", "Credits", "Questions", new inquirer.Separator(),"Go Back", "Quit", new inquirer.Separator()]
         }])
         .then(answer => {
             if(answer.section === "Quit") return quit();
@@ -266,7 +266,7 @@ const editFile = () => {
                         .then(answer => {
                             const url = `https://github.com/${answer.gitHubId}`;
                             const email = answer.email;
-                            const contactInfo = `Github: ${url}\nFor further questions, please email ${email}`;
+                            const contactInfo = `Github: ${url} \n\nFor further questions, please email ${email}`;
                             editRM(file, data, ...getSectSpan(data, targetText), contactInfo, selectSection);
                         })
                     }
@@ -278,7 +278,7 @@ const editFile = () => {
                 case "Installation": addText(); break;
                 case "Usage": addText(); break;
                 case "License": addLicense(); break;
-                case "Contribution": addText(); break;
+                case "Contributing": addText(); break;
                 case "Tests": addText(); break;
                 case "Credits": addContributor(); break;
                 case "Questions": addContact(); break;
