@@ -4,12 +4,16 @@ const {directory, initStr} = require('./config');
 const {errorAndGoTo} = require('./errorHandler');
 let currentFolder = "";
 
+const quit = () => {
+    console.log("Quiting...");
+    setTimeout(()=>{}, 200);
+}
+
 const initRM = (title, callback) => {
     fs.writeFile(`${directory}/${currentFolder}/README.md`,`# ${title}\n${initStr}`, 'utf8', () => {
         callback();
     })
 }
-console.log("C:\Users\foktm\code\hw\09-Readme-Generator\generate\aaa\READEME.md")
 
 const createRM = () => {
     console.log("\nCreate new README: ");
@@ -57,21 +61,20 @@ const createRM = () => {
 const editFile = () => {
     console.log("======== EDITING ========");
 
-    const addContent = (file, data, start, end, section) => {
-        inquirer
-        .prompt([{
-            name: "content",
-            type: "input",
-            message: "Insert content:"
-        }])
-        .then(answer => {
-            const result = data.substring(0,start).concat("\n", answer.content, "\n", data.substring(end));
-            fs.writeFile(file, result, (err)=> {
-                if (err) throw err;
-                console.log(`Section ${section} edited\n`);
-                editFile();
-            })
+    const editREADME = (file, data, start, end, content, section, goTo = editFile) => {
+        const result = data.substring(0,start).concat("\n", content, "\n", data.substring(end));
+        fs.writeFile(file, result, (err)=> {
+            if (err) throw err;
+            console.log(`Section ${section} edited\n`);
+            goTo();
         })
+    }
+    const getSectSpan = (data, targetText) => {
+        const indexAt = data.indexOf(targetText);
+        const contentStart = indexAt + targetText.length;
+        const nextSectAt = data.indexOf("## ", indexAt + 1);
+        const contentEnd = nextSectAt < 0 ? data.length : nextSectAt;
+        return [contentStart, contentEnd];
     }
 
     const selectSection = () => {
@@ -88,38 +91,130 @@ const editFile = () => {
                 console.log("======== END EDITING ========\n");
                 return mainMenu();
             }
-            
-            const targetText = `## ${answer.section}`;
             const file = `${directory}/${currentFolder}/README.md`;
 
-            switch(answer.section) {
-                case "Credits": addContributor(); break;
-                case "License": addLicense(); break;
-                default: addText(); break;
-            }
-            
             const addContributor = () => {
-                
-            }
-            const addLicense = () => {
+                const location = `./${directory}/contributors.json`;
+                let contributors = {};
+
+                const add = () => {
+                    inquirer
+                    .prompt([
+                        {
+                            name: "name",
+                            type: "input",
+                            message: "Name of contirbutor or source"
+                        },
+                        {
+                            name: "link",
+                            type: "input",
+                            message: "Link of the contributor"
+                        }
+                    ]).then(answer => {
+                        contributors[answer.name] = answer.link;
+                        actions();
+                    })
+                }
+
+                const remove = () => {
+                    const keys = Object.keys(contributors);
+                    if (keys.length === 0) {
+                        console.log("There are no contributors.");
+                        actions();
+                    }
+                    else{
+                        inquirer
+                        .prompt([{
+                            name: "name",
+                            type: "list",
+                            message: "Choose contributor to remove",
+                            choices: keys
+                        }])
+                        .then(answer => {
+                            delete contributors[answer.name];
+                            actions();
+                        })
+                    }
+                }
+
+                const save = () => {
+                    fs.writeFile(location, JSON.stringify(contributors), "utf8", (err) => {
+                        if (err) throw err;
+                        fs.readFile(file, 'utf8', (err, data) => {
+                            if (err) throw err;
+                            const keys = Object.keys(contributors);
+                            const str = keys.map((name) => {
+                                `[${name}](${contributors[name]})\n`
+                            });
+                            const targetText = "## Credits";
+                            editREADME(file, data, ...getSectSpan(data, targetText), str, "Credits", actions);
+                        })
+                    })
+                    
+                }
+
+                const actions = () => {
+                    inquirer
+                    .prompt([{
+                        name: "actions",
+                        type: "list",
+                        message: "Choose Operation",
+                        choices: ["Add", "Remove", "Save", new inquirer.Separator(), "Go Back", "Quit"]
+                    }])
+                    .then(answer => {
+                        switch(answer.actions) {
+                            case "Add": add(); break;
+                            case "Remove": remove(); break;
+                            case "Save": save(); break;
+                            case "Go Back": selectSection(); break;
+                            default: quit(); break;
+                        }
+                    })
+                }
+
+                contributors = fs.existsSync(location) ? JSON.parse(fs.readFileSync(location, 'utf8')) : {};
+                actions();
                 
             }
 
             const addText = () => {
                 fs.readFile(file, 'utf8', (err, data) => {
-                if (err) throw err;
-                const indexAt = data.indexOf(targetText);
-                if (indexAt < 0) {
-                    console.log(`Section not found. Please make sure '${targetText}' is included in README`);
-                    return selectSection();
-                }
-                else {
-                    const contentStart = indexAt + targetText.length;
-                    const nextSectAt = data.indexOf("## ", indexAt + 1);
-                    const contentEnd = nextSectAt < 0 ? data.length : nextSectAt;
-                    addContent(file, data, contentStart, contentEnd, answer.section);
-                }
-            })}
+                    if (err) throw err;
+                    const targetText = `## ${answer.section}`;
+                    const indexAt = data.indexOf(targetText);
+                    if (indexAt < 0) {
+                        console.log(`Section not found. Please make sure '${targetText}' is included in README`);
+                        selectSection();
+                    }
+                    else {
+                        inquirer
+                        .prompt([{
+                            name: "content",
+                            type: "input",
+                            message: "Insert content:"
+                        }])
+                        .then(input => {
+                            editREADME(file, data, ...getSectSpan(data, targetText), input.content, answer.section);
+                        })
+                    }
+                })
+            }
+
+            switch(answer.section) {
+                case "Credits": addContributor(); break;
+                case "License": addLicense(); break;
+                case "Installation": addText(); break;
+                case "Usage": addText(); break;
+                case "Go Back": mainMenu(); break;
+                default: quit(); break;
+            }
+            
+            
+            const addLicense = () => {
+                
+            }
+
+         
         })
     }
     selectSection();
@@ -132,7 +227,7 @@ const openExisting = () => {
     .prompt([{
         name: "folderName",
         type: "list",
-        message: "Choose from the following:",
+        message: "Choose operation",
         choices: files        
     }])
     .then(answer => {
@@ -141,10 +236,7 @@ const openExisting = () => {
     })
     : errorAndGoTo("No files found in directory", mainMenu);
 }
-const quit = () => {
-    console.log("Quiting...");
-    setTimeout(()=>{}, 200);
-}
+
 const mainMenu = () => {
     console.log("\nMENU");
     inquirer
@@ -161,9 +253,16 @@ const mainMenu = () => {
             case "Open Existing File":
                 openExisting(); break;
             default:
-                quit();
+                quit(); break;
         }
     });
 }
-console.log("======== README Generator ========");
-mainMenu();
+
+const start = () => {
+    console.log("======== README Generator ========");
+    if (!fs.existsSync(`./${directory}`)) {
+        fs.mkdirSync(`./${directory}`);
+    }
+    mainMenu();
+}
+start();
