@@ -62,12 +62,11 @@ const createRM = () => {
 const editFile = () => {
     console.log("======== EDITING ========");
 
-    const editRM = (file, data, start, end, content, section, goTo = selectSection) => {
+    const editRM = (file, data, start, end, content, goTo = null) => {
         const result = data.substring(0,start).concat("\n", content, "\n", data.substring(end));
         fs.writeFile(file, result, (err)=> {
             if (err) throw err;
-            console.log(`Section ${section} edited\n`);
-            goTo();
+            if (goTo) goTo();
         })
     }
     const getSectSpan = (data, targetText) => {
@@ -84,7 +83,7 @@ const editFile = () => {
             name: "section",
             type: "list",
             message: "Select section to edit:",
-            choices: ["Installation","Usage", "Credits", "License", new inquirer.Separator(),"Go Back", "Quit"]
+            choices: ["Description","Installation", "Usage", "License", "Contribution", "Tests", "Credits", "Questions", new inquirer.Separator(),"Go Back", "Quit", new inquirer.Separator()]
         }])
         .then(answer => {
             if(answer.section === "Quit") return quit();
@@ -149,7 +148,7 @@ const editFile = () => {
                             }).join("\n");
                             const targetText = "## Credits";
                             const next = goBack ? selectSection : actions;
-                            editRM(file, data, ...getSectSpan(data, targetText), str, "Credits", next);
+                            editRM(file, data, ...getSectSpan(data, targetText), str, next);
                         })
                     })
                     
@@ -211,9 +210,11 @@ const editFile = () => {
                             selectSection();
                         }
                         else {
-                            const li = answer.license === "MIT" ? license.MIT : license.ISC;
-                            const renewed = li.replace("[year]", answer.year).replace("[fullname]", answer.name)
-                            editRM(file, data, ...getSectSpan(data, targetText), renewed)
+                            const liType = answer.license === "MIT" ? license.MIT : license.ISC;
+                            const renewed = liType.details.replace("[year]", answer.year).replace("[fullname]", answer.name);
+                            const result = liType.badge.concat("\n", data.substring(data.indexOf("#")));    
+                            editRM(file, result, ...getSectSpan(result, targetText), renewed, selectSection);
+                            
                         }
                     });
                 })
@@ -232,20 +233,55 @@ const editFile = () => {
                         .prompt([{
                             name: "content",
                             type: "input",
-                            message: "Insert content:"
+                            message: "Add content:"
                         }])
                         .then(input => {
-                            editRM(file, data, ...getSectSpan(data, targetText), input.content, answer.section);
+                            editRM(file, data, ...getSectSpan(data, targetText), input.content, selectSection);
                         })
                     }
                 })
             }
 
+            const addContact = () => {
+                fs.readFile(file, 'utf8', (err, data) => {
+                    if (err) throw err;
+                    const targetText = `## ${answer.section}`;
+                    const indexAt = data.indexOf(targetText);
+                    if (indexAt < 0) {
+                        console.log(`Section not found. Please make sure '${targetText}' is included in README`);
+                        selectSection();
+                    }
+                    else {
+                        inquirer
+                        .prompt([{
+                            name: "gitHubId",
+                            type: "input",
+                            message: "Enter GitHub ID:"
+                        }, {
+                            name: "email",
+                            type: "input",
+                            message: "Enter Email:"
+                        }
+                        ])
+                        .then(answer => {
+                            const url = `https://github.com/${answer.gitHubId}`;
+                            const email = answer.email;
+                            const contactInfo = `Github: ${url}\nFor further questions, please email ${email}`;
+                            editRM(file, data, ...getSectSpan(data, targetText), contactInfo, selectSection);
+                        })
+                    }
+                });
+            }
+
             switch(answer.section) {
-                case "Credits": addContributor(); break;
-                case "License": addLicense(); break;
+                case "Description": addText(); break;
                 case "Installation": addText(); break;
                 case "Usage": addText(); break;
+                case "License": addLicense(); break;
+                case "Contribution": addText(); break;
+                case "Tests": addText(); break;
+                case "Credits": addContributor(); break;
+                case "Questions": addContact(); break;
                 case "Go Back": mainMenu(); break;
                 default: quit(); break;
             }
